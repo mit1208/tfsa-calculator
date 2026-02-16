@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TFSA Penalty Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cra: {
+                            red: '#D32F2F',
+                            dark: '#8B0000'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="bg-cra-red text-white p-1.5 rounded font-bold text-xl">TFSA</div>
+                <h1 class="text-xl font-semibold tracking-tight text-slate-900">Penalty Calculator</h1>
+            </div>
+            <div class="text-sm text-slate-500 hidden sm:block">Unofficial Estimation Tool</div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full gap-8 grid grid-cols-1 lg:grid-cols-12">
+
+        <!-- Left Column: Inputs -->
+        <div class="lg:col-span-4 space-y-6">
+
+            <!-- Step 1: Account Setup -->
+            <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-100/50 px-6 py-4 border-b border-slate-200">
+                    <h2 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <span
+                            class="bg-slate-800 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">1</span>
+                        Account Setup
+                    </h2>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Calculation Year</label>
+                        <select id="calcYear"
+                            class="w-full rounded-md border-slate-300 shadow-sm focus:border-cra-red focus:ring focus:ring-cra-red/20 py-2 px-3 border">
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            Starting Contribution Room
+                            <span class="text-slate-400 text-xs font-normal block">On Jan 1st of selected year</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                            <input type="number" id="startRoom" value="6000"
+                                class="w-full pl-7 rounded-md border-slate-300 shadow-sm focus:border-cra-red focus:ring focus:ring-cra-red/20 py-2 px-3 border"
+                                placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Transactions -->
+            <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-fit">
+                <div class="bg-slate-100/50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                    <h2 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <span
+                            class="bg-slate-800 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">2</span>
+                        Transactions
+                    </h2>
+                    <span id="txCount"
+                        class="text-xs font-medium bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">0 items</span>
+                </div>
+
+                <!-- CSV Import -->
+                <div class="p-4 bg-slate-50 border-b border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-medium text-slate-500">Bulk Import via CSV</label>
+                        <div class="flex flex-col items-end">
+                            <button id="downloadTemplateArgs" class="text-xs text-cra-red hover:underline"
+                                onclick="downloadTemplate()">Download Template</button>
+                        </div>
+                    </div>
+                    <div
+                        class="mb-2 text-[10px] text-slate-400 font-mono bg-slate-100 p-1.5 rounded border border-slate-200">
+                        Format: Date, Type, Amount, Institution<br>
+                        Example: 2024-01-01, Contribution, 5000, RBC
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="file" id="csvInput" accept=".csv"
+                            class="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300" />
+                    </div>
+                    <p id="csvError" class="text-xs text-red-600 mt-1 hidden"></p>
+                </div>
+
+                <!-- Add Transaction Form -->
+                <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-3 relative">
+                    <div class="absolute top-0 left-0 w-full h-px bg-slate-200"></div>
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center">Or Add
+                        Manually</div>
+                    <!-- Institution Select -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Institution</label>
+                        <select id="txInstitution"
+                            class="w-full text-sm rounded border-slate-300 shadow-sm focus:border-cra-red focus:ring-1 focus:ring-cra-red py-1.5 px-2 border">
+                            <option value="" disabled selected>Select Institution</option>
+                            <optgroup label="Big 5 Banks">
+                                <option value="RBC">RBC Royal Bank</option>
+                                <option value="TD">TD Canada Trust</option>
+                                <option value="Scotia">Scotiabank</option>
+                                <option value="BMO">BMO Bank of Montreal</option>
+                                <option value="CIBC">CIBC</option>
+                            </optgroup>
+                            <optgroup label="Investments">
+                                <option value="Wealthsimple">Wealthsimple</option>
+                                <option value="Questrade">Questrade</option>
+                                <option value="Qtrade">Qtrade</option>
+                                <option value="InteractiveBrokers">Interactive Brokers</option>
+                                <option value="iA Financial">iA Financial</option>
+                            </optgroup>
+                            <option value="Other">Other / Custom</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Date</label>
+                            <input type="date" id="txDate"
+                                class="w-full text-sm rounded border-slate-300 shadow-sm focus:border-cra-red focus:ring-1 focus:ring-cra-red py-1.5 px-2 border">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                            <select id="txType"
+                                class="w-full text-sm rounded border-slate-300 shadow-sm focus:border-cra-red focus:ring-1 focus:ring-cra-red py-1.5 px-2 border">
+                                <option value="CONTRIBUTION">Contribution (+)</option>
+                                <option value="WITHDRAWAL">Withdrawal (-)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Amount</label>
+                        <div class="relative">
+                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                            <input type="number" id="txAmount"
+                                class="w-full pl-6 text-sm rounded border-slate-300 shadow-sm focus:border-cra-red focus:ring-1 focus:ring-cra-red py-1.5 px-2 border"
+                                placeholder="0.00">
+                        </div>
+                    </div>
+                    <button id="addTxBtn"
+                        class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium py-2 px-4 rounded shadow transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Transaction
+                    </button>
+                    <p id="addTxError" class="text-xs text-red-600 hidden text-center"></p>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="overflow-y-auto max-h-[400px]">
+                    <div id="txList" class="divide-y divide-slate-100">
+                        <!-- Items will be injected here -->
+                        <div class="p-8 text-center text-slate-400 text-sm italic">
+                            No transactions added yet.
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Results & Viz -->
+        <div class="lg:col-span-8 space-y-6">
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Estimated Penalty</p>
+                    <p class="text-2xl font-bold text-cra-red mt-1" id="totalPenalty">$0.00</p>
+                    <p class="text-xs text-slate-400 mt-2">Total 1% tax on excess</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Max Monthly Excess</p>
+                    <p class="text-2xl font-bold text-slate-900 mt-1" id="peakExcess">$0.00</p>
+                    <p class="text-xs text-slate-400 mt-2">Highest peak in year</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Current Excess</p>
+                    <p class="text-2xl font-bold text-slate-900 mt-1" id="currentExcessDisplay">$0.00</p>
+                    <p class="text-xs text-slate-400 mt-2">Ending balance (Dec 31)</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Next Year's Room</p>
+                    <p class="text-2xl font-bold text-emerald-600 mt-1" id="nextYearRoom">$0.00</p>
+                    <p class="text-xs text-slate-400 mt-2">Est. Limit on Jan 1</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Months Affected</p>
+                    <p class="text-2xl font-bold text-slate-900 mt-1" id="monthsAffected">0</p>
+                    <p class="text-xs text-slate-400 mt-2">Months with excess > 0</p>
+                </div>
+                <!-- New Stats -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Total Contributions</p>
+                    <p class="text-2xl font-bold text-emerald-600 mt-1" id="totalContributions">$0.00</p>
+                    <p class="text-xs text-slate-400 mt-2">Added this year</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-500">Total Withdrawals</p>
+                    <p class="text-2xl font-bold text-amber-600 mt-1" id="totalWithdrawals">$0.00</p>
+                    <p class="text-xs text-slate-400 mt-2">Added back next year</p>
+                </div>
+            </div>
+
+            <!-- Timeline Chart -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-slate-800">Excess Timeline</h3>
+                    <div class="flex items-center gap-4 text-xs">
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-300"></span>
+                            Room Available</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            Excess Amount</div>
+                    </div>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Detailed Breakdown -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                    <h3 class="font-semibold text-slate-800">Monthly Breakdown</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-600">
+                        <thead class="text-xs uppercase bg-slate-50 text-slate-500 font-medium">
+                            <tr>
+                                <th class="px-6 py-3 border-b border-slate-200">Month</th>
+                                <th class="px-6 py-3 border-b border-slate-200 text-right">Max Excess</th>
+                                <th class="px-6 py-3 border-b border-slate-200 text-right">Penalty (1%)</th>
+                                <th class="px-6 py-3 border-b border-slate-200 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlyTableBody" class="divide-y divide-slate-100">
+                            <!-- Rows injected by JS -->
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-slate-400">
+                                    Complete setup to see breakdown.
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="bg-slate-50 font-semibold text-slate-900">
+                            <tr>
+                                <td class="px-6 py-3">Total</td>
+                                <td class="px-6 py-3 text-right" id="tableMaxExcess">-</td>
+                                <td class="px-6 py-3 text-right text-cra-red" id="tableTotalPenalty">$0.00</td>
+                                <td class="px-6 py-3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Disclaimer Footer -->
+    <footer class="bg-slate-50 border-t border-slate-200 py-8 mt-auto">
+        <div class="max-w-3xl mx-auto px-6 text-center space-y-4">
+            <div
+                class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800 text-left flex gap-3">
+                <span class="text-2xl">⚠️</span>
+                <div>
+                    <strong>Disclaimer:</strong> This tool is for educational purposes only. It is not an official CRA
+                    assessment.
+                    Calculations may differ from actual CRA penalties due to timing differences in reporting.
+                    Always verify with your "My CRA" account.
+                </div>
+            </div>
+            <p class="text-xs text-slate-400">
+                Data is processed locally in your browser. No information is sent to any server.
+            </p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
