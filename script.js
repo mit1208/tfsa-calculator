@@ -25,7 +25,7 @@ const outputs = {
     totalPenalty: document.getElementById('totalPenalty'),
     peakExcess: document.getElementById('peakExcess'),
     monthsAffected: document.getElementById('monthsAffected'),
-    currentExcess: document.getElementById('currentExcessDisplay'), // New UI element check?
+    remainingRoom: document.getElementById('remainingRoom'), // New UI element
     nextYearRoom: document.getElementById('nextYearRoom'),
     totalContributions: document.getElementById('totalContributions'),
     totalWithdrawals: document.getElementById('totalWithdrawals'),
@@ -391,10 +391,16 @@ function calculatePenalty(year, startRoom, txs) {
     // Final Calculation
     const nextYearRoom = unusedRoomEndOfYear + withdrawalsToAddBack + nextLimit;
 
+    // Current Year Remaining Room
+    // Remaining = max(0, StartRoom - TotalContributions)
+    // Withdrawals do NOT increase room for the CURRENT year.
+    const currentYearRemaining = Math.max(0, startRoom - totalContributions);
+
     return {
         totalPenalty: totalPenalty,
         peakExcess: Math.max(...monthlyMaxExcess), // This is the yearly peak
         currentExcess: excess, // The valid ending excess
+        remainingRoom: currentYearRemaining,
         nextYearLimit: nextYearRoom,
         // Additional Details for UI
         totalContributions: totalContributions,
@@ -517,9 +523,29 @@ function recalculateAll() {
     outputs.totalPenalty.textContent = formatCurrency(result.totalPenalty);
     outputs.peakExcess.textContent = formatCurrency(result.peakExcess);
     outputs.monthsAffected.textContent = result.affectedMonths;
-    if (outputs.currentExcess) outputs.currentExcess.textContent = formatCurrency(result.currentExcess);
+    if (outputs.remainingRoom) {
+        outputs.remainingRoom.textContent = formatCurrency(result.remainingRoom);
+        // Visual cue: if 0, maybe gray out?
+        if (result.remainingRoom > 0) {
+            outputs.remainingRoom.classList.remove('text-slate-400');
+            outputs.remainingRoom.classList.add('text-indigo-600');
+        } else {
+            outputs.remainingRoom.classList.remove('text-indigo-600');
+            outputs.remainingRoom.classList.add('text-slate-400');
+        }
+    }
+    if (outputs.nextYearRoom) outputs.nextYearRoom.textContent = formatCurrency(result.nextYearLimit);
     if (outputs.nextYearRoom) outputs.nextYearRoom.textContent = formatCurrency(result.nextYearLimit);
     if (outputs.totalContributions) outputs.totalContributions.textContent = formatCurrency(result.totalContributions);
+
+    // Update Dynamic Labels
+    const startRoomLabel = document.getElementById('startRoomLabel');
+    const remainingRoomLabel = document.getElementById('remainingRoomLabel');
+    const nextYearRoomLabel = document.getElementById('nextYearRoomLabel');
+
+    if (startRoomLabel) startRoomLabel.textContent = `On Jan 1st of ${year}`;
+    if (remainingRoomLabel) remainingRoomLabel.textContent = `Available to contribute in ${year}`;
+    if (nextYearRoomLabel) nextYearRoomLabel.textContent = `Est. Limit on Jan 1, ${parseInt(year) + 1}`;
     if (outputs.totalWithdrawals) outputs.totalWithdrawals.textContent = formatCurrency(result.totalWithdrawals);
 
     // Update Table Footer
